@@ -47,6 +47,7 @@ class BusService:
             )
         return BusResponse.model_validate(bus)
 
+        
     async def create_bus(self, data: BusCreate) -> BusResponse:
         """Bus အသစ် ထည့်သွင်းခြင်း"""
 

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -73,3 +73,19 @@ async def update_company(
 async def delete_company(company_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     service = BusCompanyService(db)
     return await service.delete_company(company_id)
+
+
+
+@router.post(
+    "/{company_id}/logo",
+    response_model=BusCompanyResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(has_permission("bus_company:update"))],
+)
+async def upload_logo(
+    company_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    service = BusCompanyService(db)
+    return await service.upload_company_logo(company_id=company_id, file=file)

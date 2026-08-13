@@ -23,6 +23,7 @@ async def list_buses(
     size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
+    
     service = BusService(db)
     return await service.get_all_buses(
         search=search,

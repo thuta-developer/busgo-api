@@ -1,12 +1,20 @@
 import uuid
 import math
 from typing import Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.bus_company_repository import BusCompanyRepository
 from app.schemas.bus_company import BusCompanyCreate, BusCompanyUpdate, BusCompanyResponse
 from app.schemas.common import PaginatedResponse
+from app.services.upload_service import (
+    upload_to_cloudinary,
+    delete_from_cloudinary,
+    extract_public_id_from_url,
+)
+
+
+
 
 class BusCompanyService:
     def __init__(self, db: AsyncSession):
@@ -35,6 +43,33 @@ class BusCompanyService:
             size=size,
             total_pages=total_pages,
         )
+
+    async def upload_company_logo(
+        self, company_id: uuid.UUID, file: UploadFile
+    ) -> BusCompanyResponse:
+
+        company = await self.repo.get_by_id(company_id)
+        if not company:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bus company not found",
+            )
+        
+
+        if company.logo_url:
+            old_public_id = extract_public_id_from_url(company.logo_url)
+            if old_public_id:
+                await delete_from_cloudinary(old_public_id)
+
+        new_logo_url = await upload_to_cloudinary(
+            file=file,
+            folder="companies",
+        )
+        update_data = BusCompanyUpdate(logo_url=new_logo_url)
+        update_company = await self.repo.update(company, update_data)
+        return update_company
+        
+
 
     async def get_company_by_id(self, company_id: uuid.UUID) -> BusCompanyResponse:
         """Company ID ဖြင့် ရှာဖွေခြင်း (မရှိပါက 404 ပြမည်)"""

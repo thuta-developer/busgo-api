@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # Security & JWT
-    # SecretStr ကို အသုံးပြုခြင်းဖြင့် Console / Log ထဲတွင် Plaintext Secret များ မတော်တဆ Print မထွက်အောင် ကာကွယ်ပေးသည်
     SECRET_KEY: str 
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -36,6 +35,10 @@ class Settings(BaseSettings):
 
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 1440
+
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
 
     # Computed Property for Async PostgreSQL Connection URI
     @property
