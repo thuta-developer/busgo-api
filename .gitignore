@@ -1,0 +1,23 @@
+# Environment Variables (CRITICAL)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic
+alembic/render.yaml

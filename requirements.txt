@@ -1,0 +1,28 @@
+# Framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Settings & Validation
+pydantic==2.7.4
+pydantic-settings==2.3.4
+python-dotenv==1.0.1
+
+# Database & ORM
+sqlalchemy==2.0.31
+asyncpg==0.29.0
+alembic==1.13.1
+
+# Security & Authentication
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.9
+
+# Redis & Async Tasks
+redis==5.0.6
+celery==5.4.0
+
+# Monitoring & Testing
+sentry-sdk[fastapi]==2.6.0
+pytest==8.2.2
+httpx==0.27.0
+greenlet==3.5.5
