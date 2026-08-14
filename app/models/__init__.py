@@ -4,6 +4,8 @@ from app.models.rbac import Permission, Role
 from app.models.user import User
 from app.models.bus import Bus
 from app.models.bus_company import BusCompany
+from app.models.seat import Seat
+from app.models.route import Route
 
 __all__ = [
     "Base",
@@ -14,5 +16,7 @@ __all__ = [
     "role_permissions",
     "user_roles",
     "Bus",
-    "BusCompany"
+    "BusCompany",
+    "Seat",
+    "Route"
 ]
