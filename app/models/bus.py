@@ -8,6 +8,7 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.bus_company import BusCompany
     from app.models.seat import Seat
+    from app.models.trip import Trip
 
 class Bus(BaseModel):
     __tablename__ = "buses"
@@ -25,3 +26,4 @@ class Bus(BaseModel):
     # Relationships
     company: Mapped["BusCompany"] = relationship("BusCompany", back_populates="buses")
     seats: Mapped[list["Seat"]] = relationship("Seat", back_populates="bus")
+    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="bus", cascade="all, delete-orphan")

@@ -6,6 +6,8 @@ from app.models.bus import Bus
 from app.models.bus_company import BusCompany
 from app.models.seat import Seat
 from app.models.route import Route
+from app.models.trip import Trip
+from app.models.trip import TripStatus
 
 __all__ = [
     "Base",
@@ -18,5 +20,7 @@ __all__ = [
     "Bus",
     "BusCompany",
     "Seat",
-    "Route"
+    "Route",
+    "Trip",
+    "TripStatus",
 ]

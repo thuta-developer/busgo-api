@@ -2,8 +2,10 @@ import uuid
 from sqlalchemy import Column, String, Float, ForeignKey, Enum as SQLEnum, Boolean, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
+from typing import List
 
 from app.models.base import BaseModel
+from app.models.trip import Trip
 
 
 class Route(BaseModel):
@@ -29,3 +31,5 @@ class Route(BaseModel):
         Float, nullable=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="route", cascade="all, delete-orphan")
