@@ -11,13 +11,15 @@ from app.repositories.route_repository import RouteRepository
 from app.repositories.bus_repository import BusRepository
 from app.schemas.trip import TripCreate, TripUpdate, TripResponse, TripPriceResponse
 from app.schemas.common import PaginatedResponse
-
+from app.services.trip_seat_service import TripSeatService
 
 class TripService:
     def __init__(self, db: AsyncSession):
+        self.db = db
         self.repo = TripRepository(db)
         self.route_repository = RouteRepository(db)
         self.bus_repository = BusRepository(db)
+        
 
     # ========================================
     # Helper
@@ -184,6 +186,8 @@ class TripService:
 
         try:
             trip = await self.repo.create(trip_data)
+            trip_seat_service = TripSeatService(self.db)
+            await trip_seat_service.initialize_trip_seats(trip.id, trip.bus_id)
             return await self._to_response(trip)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

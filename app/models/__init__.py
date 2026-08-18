@@ -8,6 +8,8 @@ from app.models.seat import Seat
 from app.models.route import Route
 from app.models.trip import Trip
 from app.models.trip import TripStatus
+from app.models.trip_seat import TripSeat, TripSeatStatus
+
 
 __all__ = [
     "Base",
@@ -23,4 +25,6 @@ __all__ = [
     "Route",
     "Trip",
     "TripStatus",
+    "TripSeat",
+    "TripSeatStatus",
 ]

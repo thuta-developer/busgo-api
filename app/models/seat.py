@@ -3,9 +3,11 @@ import uuid
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
+from typing import List
 
 from app.models.bus import Bus
 from app.models.base import BaseModel
+from app.models.trip_seat import TripSeat
 
 class BusType(str, enum.Enum):
     VIP_2_1 = "2:1"  # VIP 3 Columns (2 + 1)
@@ -33,3 +35,4 @@ class Seat(BaseModel):
     is_active : Mapped[bool] = mapped_column(Boolean, default=True)
 
     bus : Mapped["Bus"] = relationship("Bus", back_populates="seats")
+    trip_seats: Mapped[List["TripSeat"]] = relationship("TripSeat", back_populates="seat", cascade="all, delete-orphan")

@@ -2,7 +2,7 @@ import uuid
 import enum
 from datetime import datetime, time
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 from sqlalchemy import (
     String,
     Float,
@@ -22,6 +22,7 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.route import Route
     from app.models.bus import Bus
+    from app.models.trip_seat import TripSeat
 
 
 class TripStatus(str, enum.Enum):
@@ -102,3 +103,4 @@ class Trip(BaseModel):
     # Relationships
     route: Mapped["Route"] = relationship("Route", back_populates="trips")
     bus: Mapped["Bus"] = relationship("Bus", back_populates="trips")
+    trip_seats: Mapped[List["TripSeat"]] = relationship("TripSeat", back_populates="trip", cascade="all, delete-orphan")

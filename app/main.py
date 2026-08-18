@@ -6,11 +6,24 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.core.rate_limit import RateLimitMiddleware
+from contextlib import asynccontextmanager
+from app.core.scheduler import start_scheduler, shutdown_scheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    start_scheduler()
+    yield
+    # Shutdown
+    shutdown_scheduler()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url="/api/v1/openapi.json",
+    lifespan=lifespan,
 )
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

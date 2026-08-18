@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -6,6 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 from app.models.rbac import Role
 from app.models.associations import user_roles
+if TYPE_CHECKING:
+    from app.models.trip_seat import TripSeat
 
 
 class User(BaseModel):
@@ -45,5 +47,8 @@ class User(BaseModel):
     roles: Mapped[List[Role]] = relationship(
         secondary=user_roles,
         lazy="selectin"
+    )
+    trip_seats: Mapped[List["TripSeat"]] = relationship(
+        "TripSeat", back_populates="user"
     )
 
