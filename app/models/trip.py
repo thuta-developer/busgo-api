@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from app.models.route import Route
     from app.models.bus import Bus
     from app.models.trip_seat import TripSeat
+    from app.models.booking import Booking
 
 
 class TripStatus(str, enum.Enum):
@@ -104,3 +105,4 @@ class Trip(BaseModel):
     route: Mapped["Route"] = relationship("Route", back_populates="trips")
     bus: Mapped["Bus"] = relationship("Bus", back_populates="trips")
     trip_seats: Mapped[List["TripSeat"]] = relationship("TripSeat", back_populates="trip", cascade="all, delete-orphan")
+    bookings: Mapped[List["Booking"]] = relationship("Booking", back_populates="trip")

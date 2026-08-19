@@ -186,8 +186,6 @@ class TripService:
 
         try:
             trip = await self.repo.create(trip_data)
-            trip_seat_service = TripSeatService(self.db)
-            await trip_seat_service.initialize_trip_seats(trip.id, trip.bus_id)
             return await self._to_response(trip)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -241,3 +239,7 @@ class TripService:
             )
         await self.repo.delete(trip)
         return {"message": "Trip deleted successfully"}
+
+
+
+    

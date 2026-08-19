@@ -171,3 +171,6 @@ class TripRepository:
     async def delete(self, trip: Trip) -> None:
         await self.db.delete(trip)
         await self.db.commit()
+
+
+        

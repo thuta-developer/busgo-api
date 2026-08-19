@@ -3,46 +3,46 @@ from typing import List, Optional
 from sqlalchemy import select, update, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from datetime import datetime, time, timezone, timedelta
+from datetime import datetime, time, timezone, timedelta, date
 
 from app.models.trip_seat import TripSeat, TripSeatStatus
 from app.models.seat import Seat
-from app.schemas.trip_seat import TripSeatCreate, TripSeatUpdate
 
 
 class TripSeatRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_id(self, trip_seat_id: uuid.UUID) -> Optional[TripSeat]:
-        stmt = select(TripSeat).where(TripSeat.id == trip_seat_id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def _get_with_seat(self, trip_seat_id: uuid.UUID) -> Optional[TripSeat]:
-        """Fetch a TripSeat with its Seat relationship eagerly loaded."""
-        stmt = (
-            select(TripSeat)
-            .where(TripSeat.id == trip_seat_id)
-            .options(selectinload(TripSeat.seat))
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def get_by_trip_and_seat(self, trip_id: uuid.UUID, seat_id: uuid.UUID) -> Optional[TripSeat]:
-        stmt = select(TripSeat).where(
-            and_(TripSeat.trip_id == trip_id, TripSeat.seat_id == seat_id)
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def get_all_for_trip(
-        self, trip_id: uuid.UUID, status: Optional[TripSeatStatus] = None
+    async def _get_many_with_seat(
+        self, trip_seat_ids: List[uuid.UUID]
     ) -> List[TripSeat]:
+        """Fetch multiple TripSeats with their Seat and Trip relationships eagerly loaded."""
+        if not trip_seat_ids:
+            return []
         stmt = (
             select(TripSeat)
-            .where(TripSeat.trip_id == trip_id)
-            .options(selectinload(TripSeat.seat))
+            .where(TripSeat.id.in_(trip_seat_ids))
+            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_all_for_trip_and_date(
+        self,
+        trip_id: uuid.UUID,
+        travel_date: date,
+        status: Optional[TripSeatStatus] = None,
+    ) -> List[TripSeat]:
+        """Trip ID နှင့် Travel Date အလိုက် ထိုင်ခုံများအားလုံးကို ရှာဖွေခြင်း။"""
+        stmt = (
+            select(TripSeat)
+            .where(
+                and_(
+                    TripSeat.trip_id == trip_id,
+                    TripSeat.travel_date == travel_date,
+                )
+            )
+            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
         )
         if status:
             stmt = stmt.where(TripSeat.status == status)
@@ -50,76 +50,36 @@ class TripSeatRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def create(self, data: TripSeatCreate) -> TripSeat:
-        trip_seat = TripSeat(**data.model_dump())
-        self.db.add(trip_seat)
-        await self.db.commit()
-        return await self._get_with_seat(trip_seat.id)
-
-
-    async def bulk_create(self, trip_seats: List[TripSeat]) -> List[TripSeat]:
-        self.db.add_all(trip_seats)
-        await self.db.commit()
-        # Re-fetch with seat relationship eagerly loaded to avoid MissingGreenlet
-        # when accessing trip_seat.seat in async context.
-        ids = [ts.id for ts in trip_seats]
+    async def get_by_ids(self, trip_seat_ids: List[uuid.UUID]) -> List[TripSeat]:
+        """TripSeat ID များဖြင့် ရှာဖွေခြင်း (Seat & Trip relationships ပါ)"""
+        if not trip_seat_ids:
+            return []
         stmt = (
             select(TripSeat)
-            .where(TripSeat.id.in_(ids))
-            .options(selectinload(TripSeat.seat))
+            .where(TripSeat.id.in_(trip_seat_ids))
+            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def update(self, trip_seat: TripSeat, data: TripSeatUpdate) -> TripSeat:
-        for key, value in data.model_dump(exclude_unset=True).items():
-            setattr(trip_seat, key, value)
+    async def bulk_create(self, trip_seats: List[TripSeat]) -> List[TripSeat]:
+        """TripSeat အသစ်များကို Bulk Create လုပ်ပြီး Seat Relationship ဖြင့် ပြန်လည်ပေးပို့ခြင်း။"""
+        self.db.add_all(trip_seats)
         await self.db.commit()
-        return await self._get_with_seat(trip_seat.id)
+        ids = [ts.id for ts in trip_seats]
+        return await self._get_many_with_seat(ids)
 
-    async def delete(self, trip_seat: TripSeat) -> None:
-        await self.db.delete(trip_seat)
-        await self.db.commit()
-
-
-    async def book_seat(self, trip_id: uuid.UUID, seat_id: uuid.UUID, user_id: uuid.UUID) -> Optional[TripSeat]:
-        # Using optimistic lock or SELECT FOR UPDATE? For simplicity, we use a query to update only if AVAILABLE
-        # seat_id can be either the TripSeat.id or the Seat.id
-        stmt = (
-            update(TripSeat)
-            .where(
-                and_(
-                    TripSeat.trip_id == trip_id,
-                    or_(
-                        TripSeat.id == seat_id,
-                        TripSeat.seat_id == seat_id,
-                    ),
-                    TripSeat.status == TripSeatStatus.AVAILABLE,
-                )
-            )
-            .values(
-                status=TripSeatStatus.BOOKED,
-                booked_by=user_id,
-                booked_at=datetime.now(timezone.utc),
-            )
-            .returning(TripSeat)
-        )
-        result = await self.db.execute(stmt)
-        await self.db.commit()
-        row = result.scalar_one_or_none()
-        if row:
-            return await self._get_with_seat(row.id)
-        return None
-
-    async def hold_seat(
-        self, 
-        trip_id: uuid.UUID, 
-        seat_id: uuid.UUID, 
-        user_id: uuid.UUID, 
-        hold_duration_seconds: int = 300
-    ) -> Optional[TripSeat]:
+    async def bulk_hold_seats(
+        self,
+        trip_id: uuid.UUID,
+        travel_date: date,
+        seat_ids: List[uuid.UUID],
+        user_id: uuid.UUID,
+        hold_duration_seconds: int = 600,
+    ) -> List[TripSeat]:
         """
-        ထိုင်ခုံကို AVAILABLE မှ HELD သို့ပြောင်းပြီး သတ်မှတ်ချိန်အထိ သိမ်းဆည်းပေးသည်။
+        ထိုင်ခုံများစွာကို တစ်ပြိုင်နက် AVAILABLE မှ HELD သို့ပြောင်းသည်။
+        seat_ids တစ်ခုချင်းစီသည် TripSeat.id သို့မဟုတ် Seat.id ဖြစ်နိုင်သည်။
         """
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=hold_duration_seconds)
@@ -129,11 +89,26 @@ class TripSeatRepository:
             .where(
                 and_(
                     TripSeat.trip_id == trip_id,
+                    TripSeat.travel_date == travel_date,
                     or_(
-                        TripSeat.id == seat_id,
-                        TripSeat.seat_id == seat_id,
+                        TripSeat.id.in_(seat_ids),
+                        TripSeat.seat_id.in_(seat_ids),
                     ),
-                    TripSeat.status == TripSeatStatus.AVAILABLE,
+                    or_(
+                        # ၁။ ခုံ လွတ်နေလျှင် Hold ရမည်
+                        TripSeat.status == TripSeatStatus.AVAILABLE,
+                        # ၂။ မိမိကိုယ်တိုင် Hold ထားပြီး သက်တမ်းမကုန်သေးလျှင် Renew လုပ်ခွင့်ရှိမည်
+                        and_(
+                            TripSeat.status == TripSeatStatus.HELD,
+                            TripSeat.booked_by == user_id,
+                            TripSeat.hold_expires_at > now,
+                        ),
+                        # ၃။ သူများ Hold ထားသော်လည်း သက်တမ်းကုန်သွားပါက Hold လို့ရမည်
+                        and_(
+                            TripSeat.status == TripSeatStatus.HELD,
+                            TripSeat.hold_expires_at <= now,
+                        ),
+                    ),
                 )
             )
             .values(
@@ -142,23 +117,59 @@ class TripSeatRepository:
                 booked_at=None,
                 hold_expires_at=expires_at,
             )
-            .returning(TripSeat)
+            .returning(TripSeat.id)
         )
         result = await self.db.execute(stmt)
         await self.db.commit()
-        row = result.scalar_one_or_none()
-        if row:
-            return await self._get_with_seat(row.id)
-        return None
+        updated_ids = list(result.scalars().all())
+        return await self._get_many_with_seat(updated_ids)
 
-    async def confirm_booking(
-        self, 
-        trip_id: uuid.UUID, 
-        seat_id: uuid.UUID, 
-        user_id: uuid.UUID
-    ) -> Optional[TripSeat]:
+    async def bulk_book_seats(
+        self,
+        trip_id: uuid.UUID,
+        travel_date: date,
+        seat_ids: List[uuid.UUID],
+        user_id: uuid.UUID,
+    ) -> List[TripSeat]:
         """
-        HELD ထားသော ထိုင်ခုံကို အပြီးအပိုင် BOOKED အဖြစ်အတည်ပြုသည်။
+        ထိုင်ခုံများစွာကို တစ်ပြိုင်နက် AVAILABLE မှ BOOKED သို့ပြောင်းသည်။
+        """
+        now = datetime.now(timezone.utc)
+
+        stmt = (
+            update(TripSeat)
+            .where(
+                and_(
+                    TripSeat.trip_id == trip_id,
+                    TripSeat.travel_date == travel_date,
+                    or_(
+                        TripSeat.id.in_(seat_ids),
+                        TripSeat.seat_id.in_(seat_ids),
+                    ),
+                    TripSeat.status == TripSeatStatus.AVAILABLE,
+                )
+            )
+            .values(
+                status=TripSeatStatus.BOOKED,
+                booked_by=user_id,
+                booked_at=now,
+            )
+            .returning(TripSeat.id)
+        )
+        result = await self.db.execute(stmt)
+        await self.db.commit()
+        updated_ids = list(result.scalars().all())
+        return await self._get_many_with_seat(updated_ids)
+
+    async def bulk_confirm_booking(
+        self,
+        trip_id: uuid.UUID,
+        travel_date: date,
+        seat_ids: List[uuid.UUID],
+        user_id: uuid.UUID,
+    ) -> List[TripSeat]:
+        """
+        HELD ထားသော ထိုင်ခုံများစွာကို တစ်ပြိုင်နက် BOOKED အဖြစ်အတည်ပြုသည်။
         (Hold ချိန်မကုန်သေးဘဲ ထို User ကိုင်ထားမှသာ ရမည်)
         """
         now = datetime.now(timezone.utc)
@@ -168,46 +179,47 @@ class TripSeatRepository:
             .where(
                 and_(
                     TripSeat.trip_id == trip_id,
+                    TripSeat.travel_date == travel_date,
                     or_(
-                        TripSeat.id == seat_id,
-                        TripSeat.seat_id == seat_id,
+                        TripSeat.id.in_(seat_ids),
+                        TripSeat.seat_id.in_(seat_ids),
                     ),
                     TripSeat.status == TripSeatStatus.HELD,
                     TripSeat.booked_by == user_id,
-                    TripSeat.hold_expires_at > now,  # သက်တမ်းမကုန်သေးပါ
+                    TripSeat.hold_expires_at > now,
                 )
             )
             .values(
                 status=TripSeatStatus.BOOKED,
                 booked_at=now,
-                hold_expires_at=None,  # သက်တမ်းကို ရှင်းပစ်သည်
+                hold_expires_at=None,
             )
-            .returning(TripSeat)
+            .returning(TripSeat.id)
         )
         result = await self.db.execute(stmt)
         await self.db.commit()
-        row = result.scalar_one_or_none()
-        if row:
-            return await self._get_with_seat(row.id)
-        return None
+        updated_ids = list(result.scalars().all())
+        return await self._get_many_with_seat(updated_ids)
 
-    async def release_hold_seat(
-        self, 
-        trip_id: uuid.UUID, 
-        seat_id: uuid.UUID, 
-        user_id: uuid.UUID
-    ) -> Optional[TripSeat]:
+    async def bulk_release_hold_seats(
+        self,
+        trip_id: uuid.UUID,
+        travel_date: date,
+        seat_ids: List[uuid.UUID],
+        user_id: uuid.UUID,
+    ) -> List[TripSeat]:
         """
-        Hold ထားသော ထိုင်ခုံကို ပြန်လွှတ်ပေးခြင်း (User က ကိုယ်တိုင်ပယ်ဖျက်ခြင်း သို့မဟုတ် ငွေမသွင်းလို့)
+        HELD ထားသော ထိုင်ခုံများစွာကို တစ်ပြိုင်နက် AVAILABLE သို့ပြန်လွှတ်သည်။
         """
         stmt = (
             update(TripSeat)
             .where(
                 and_(
                     TripSeat.trip_id == trip_id,
+                    TripSeat.travel_date == travel_date,
                     or_(
-                        TripSeat.id == seat_id,
-                        TripSeat.seat_id == seat_id,
+                        TripSeat.id.in_(seat_ids),
+                        TripSeat.seat_id.in_(seat_ids),
                     ),
                     TripSeat.status == TripSeatStatus.HELD,
                     TripSeat.booked_by == user_id,
@@ -218,14 +230,12 @@ class TripSeatRepository:
                 hold_expires_at=None,
                 booked_by=None,
             )
-            .returning(TripSeat)
+            .returning(TripSeat.id)
         )
         result = await self.db.execute(stmt)
         await self.db.commit()
-        row = result.scalar_one_or_none()
-        if row:
-            return await self._get_with_seat(row.id)
-        return None
+        updated_ids = list(result.scalars().all())
+        return await self._get_many_with_seat(updated_ids)
 
     async def release_expired_holds(self) -> int:
         """
@@ -252,8 +262,3 @@ class TripSeatRepository:
         await self.db.commit()
         released_count = len(result.scalars().all())
         return released_count
-
-
-
-
-        

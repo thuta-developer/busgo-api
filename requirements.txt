@@ -31,3 +31,6 @@ greenlet==3.5.5
 
 cloudinary==1.45.0
 APScheduler==3.11.3
+
+requests==2.34.2
+mmpay-python-sdk==0.1.4

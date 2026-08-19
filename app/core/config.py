@@ -40,6 +40,17 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
 
+    # Myam Myan Pay
+    MYANMYANPAY_APP_ID: str
+    MYANMYANPAY_SECRET_KEY: str
+    MYANMYANPAY_PUBLISHABLE_KEY: str
+    MYANMYANPAY_API_BASE_URL: str
+    BASE_URL: str
+    MMPAY_WEBHOOK_URL: str
+    PAYMENT_EXPIRY_MINUTES: int = 15
+    BOOKING_EXPIRY_MINUTES: int = 15
+
+
     # Computed Property for Async PostgreSQL Connection URI
     @property
     def DATABASE_URL(self) -> str:

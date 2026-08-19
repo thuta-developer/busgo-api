@@ -9,6 +9,9 @@ from app.models.route import Route
 from app.models.trip import Trip
 from app.models.trip import TripStatus
 from app.models.trip_seat import TripSeat, TripSeatStatus
+from app.models.payment import Payment
+from app.models.booking import Booking,BookingStatus, PaymentMethod, PaymentStatus
+from app.models.booking_seat import BookingSeat
 
 
 __all__ = [
@@ -27,4 +30,10 @@ __all__ = [
     "TripStatus",
     "TripSeat",
     "TripSeatStatus",
+    "Payment",
+    "PaymentMethod",
+    "PaymentStatus",
+    "Booking",
+    "BookingStatus",
+    "BookingSeat"
 ]
