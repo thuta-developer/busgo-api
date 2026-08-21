@@ -9,6 +9,7 @@ from app.models.associations import user_roles
 if TYPE_CHECKING:
     from app.models.trip_seat import TripSeat
     from app.models.booking import Booking
+    from app.models.promotion_usage import PromotionUsage
 
 
 class User(BaseModel):
@@ -53,4 +54,5 @@ class User(BaseModel):
         "TripSeat", back_populates="user"
     )
     bookings: Mapped[List["Booking"]] = relationship("Booking", back_populates="user")
+    promotion_used : Mapped[List["PromotionUsage"]] = relationship("PromotionUsage", back_populates="user", cascade="all, delete-orphan")
 

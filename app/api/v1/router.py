@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, users, roles, permissions, bus_companies,buses, seats,
-    routes,trips, trip_seats,bookings, payments
+    routes,trips, trip_seats,bookings, payments, promotions
 )
 
 # Main V1 Router
@@ -20,3 +20,4 @@ router.include_router(trips.router)
 router.include_router(trip_seats.router)
 router.include_router(bookings.router)
 router.include_router(payments.router)
+router.include_router(promotions.router)

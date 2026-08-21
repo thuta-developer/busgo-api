@@ -15,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.payment import Payment, PaymentStatus, PaymentMethod
 from app.models.booking import Booking, BookingStatus
+from app.models.promotion_usage import UsageStatus
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.booking_repository import BookingRepository
+from app.services.promo_service import PromotionService
 from app.schemas.payment import (
     PaymentCreate,
     PaymentUpdate,
@@ -38,6 +40,7 @@ class PaymentService:
         self.db = db
         self.payment_repo = PaymentRepository(db)
         self.booking_repo = BookingRepository(db)
+        self.promo_service = PromotionService(db)
 
         self.mmpay = MMPaySDK(
             {
@@ -78,6 +81,23 @@ class PaymentService:
             gateway_method=gateway_response.get("method"),
         )
         return await self.payment_repo.update(payment, update_data)
+
+    async def _record_successful_promotion_usage(self, booking: Booking) -> None:
+        """Record promotion usage only after the booking payment succeeds."""
+        if not booking.promotion_id:
+            return
+
+        existing_usage = await self.promo_service.repo.get_usage_by_booking(booking.id)
+        if existing_usage:
+            return
+
+        await self.promo_service.record_usage(
+            promotion_id=booking.promotion_id,
+            user_id=booking.user_id,
+            booking_id=booking.id,
+            discount_amount_applied=float(booking.discount_amount),
+            status=UsageStatus.SUCCESS,
+        )
 
     # ==============================================
     # Initiate Payment
@@ -237,6 +257,8 @@ class PaymentService:
             )
 
             booking.status = b_status
+            if gate_status == "SUCCESS":
+                await self._record_successful_promotion_usage(booking)
             await self.db.commit()
             return {"status": "success", "message": "Webhook processed successfully"}
         except Exception as e:
@@ -276,6 +298,7 @@ class PaymentService:
                     # Update booking
                     booking = payment.booking
                     booking.status = BookingStatus.CONFIRMED
+                    await self._record_successful_promotion_usage(booking)
                     await self.db.commit()
 
                 elif gateway_status == "CANCELLED":

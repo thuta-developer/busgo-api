@@ -11,12 +11,43 @@ from app.schemas.booking import (
     BookingUpdate,
     BookingWithPaymentRequest,
     BookingWithPaymentResponse,
+    BookingPricePreviewRequest,
+    BookingPricePreviewResponse,
 )
 from app.schemas.common import PaginatedResponse
 from app.services.booking_service import BookingService
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
+
+
+@router.post(
+    "/price-preview",
+    response_model=BookingPricePreviewResponse,
+    dependencies=[Depends(has_permission("booking:create"))],
+)
+async def preview_booking_price(
+    data: BookingPricePreviewRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Booking Form မှ Summary ပြရန် Price Preview တွက်ချက်ခြင်း
+    Promo Code ထည့်လိုက်လျှင် Discount နှုတ်ပြီး Final Price ကို ပြန်ပေးမည်
+    
+    Body: {
+        "trip_id": "uuid",
+        "seat_ids": ["uuid1", "uuid2"],
+        "travel_date": "2026-08-25",
+        "user_type": "local",
+        "promo_code": "SUMMER25"   // optional
+    }
+    """
+    service = BookingService(db)
+    return await service.preview_booking_price(
+        data=data,
+        user_id=current_user.id,
+    )
 
 
 @router.post(

@@ -70,6 +70,25 @@ class TripSeatRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_by_trip_or_seat_ids(
+        self, seat_ids: List[uuid.UUID]
+    ) -> List[TripSeat]:
+        """Fetch TripSeats when callers provide TripSeat IDs or Seat IDs."""
+        if not seat_ids:
+            return []
+        stmt = (
+            select(TripSeat)
+            .where(
+                or_(
+                    TripSeat.id.in_(seat_ids),
+                    TripSeat.seat_id.in_(seat_ids),
+                )
+            )
+            .options(*self._base_options())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def bulk_create(self, trip_seats: List[TripSeat]) -> List[TripSeat]:
         """TripSeat အသစ်များကို Bulk Create လုပ်ပြီး Seat Relationship ဖြင့် ပြန်လည်ပေးပို့ခြင်း။"""
         self.db.add_all(trip_seats)

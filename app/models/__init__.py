@@ -12,6 +12,8 @@ from app.models.trip_seat import TripSeat, TripSeatStatus
 from app.models.payment import Payment
 from app.models.booking import Booking,BookingStatus, PaymentMethod, PaymentStatus
 from app.models.booking_seat import BookingSeat
+from app.models.promotion import Promotion, PromotionStatus
+from app.models.promotion_usage import PromotionUsage, UsageStatus
 
 
 __all__ = [
@@ -35,5 +37,9 @@ __all__ = [
     "PaymentStatus",
     "Booking",
     "BookingStatus",
-    "BookingSeat"
+    "BookingSeat",
+    "Promotion",
+    "PromotionStatus",
+    "PromotionUsage",
+    "UsageStatus",
 ]
