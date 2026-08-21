@@ -80,6 +80,11 @@ class TripSeatService:
             res.position = (
                 trip_seat.seat.position.value if trip_seat.seat.position else None
             )
+
+        # Attach bus data from trip relationship
+        if trip:
+            res.bus = trip.bus
+
         return res
 
     async def _to_bulk_response(

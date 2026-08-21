@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime, time, timezone, timedelta, date
 
 from app.models.trip_seat import TripSeat, TripSeatStatus
+from app.models.trip import Trip
 from app.models.seat import Seat
 
 
@@ -13,16 +14,23 @@ class TripSeatRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    def _base_options(self):
+        """Common eager-load options: Seat, Trip and Trip.bus."""
+        return (
+            selectinload(TripSeat.seat),
+            selectinload(TripSeat.trip).selectinload(Trip.bus),
+        )
+
     async def _get_many_with_seat(
         self, trip_seat_ids: List[uuid.UUID]
     ) -> List[TripSeat]:
-        """Fetch multiple TripSeats with their Seat and Trip relationships eagerly loaded."""
+        """Fetch multiple TripSeats with their Seat, Trip and Trip.bus relationships eagerly loaded."""
         if not trip_seat_ids:
             return []
         stmt = (
             select(TripSeat)
             .where(TripSeat.id.in_(trip_seat_ids))
-            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
+            .options(*self._base_options())
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
@@ -42,7 +50,7 @@ class TripSeatRepository:
                     TripSeat.travel_date == travel_date,
                 )
             )
-            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
+            .options(*self._base_options())
         )
         if status:
             stmt = stmt.where(TripSeat.status == status)
@@ -51,13 +59,13 @@ class TripSeatRepository:
         return list(result.scalars().all())
 
     async def get_by_ids(self, trip_seat_ids: List[uuid.UUID]) -> List[TripSeat]:
-        """TripSeat ID များဖြင့် ရှာဖွေခြင်း (Seat & Trip relationships ပါ)"""
+        """TripSeat ID များဖြင့် ရှာဖွေခြင်း (Seat, Trip & Trip.bus relationships ပါ)"""
         if not trip_seat_ids:
             return []
         stmt = (
             select(TripSeat)
             .where(TripSeat.id.in_(trip_seat_ids))
-            .options(selectinload(TripSeat.seat), selectinload(TripSeat.trip))
+            .options(*self._base_options())
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())

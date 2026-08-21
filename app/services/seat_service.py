@@ -27,6 +27,14 @@ class SeatService:
                 detail="Bus not found",
             )
 
+        # Booking များ ရှိနေပါက Seat များကို ဖျက်၍ မရပါ
+        has_bookings = await self.repo.has_bookings_for_bus(bus_id)
+        if has_bookings:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot regenerate seats. This bus has existing bookings. Please create a new bus instead.",
+            )
+
         await self.repo.delete_seats_by_bus_id(bus_id)
 
         new_seats: List[Seat] = []

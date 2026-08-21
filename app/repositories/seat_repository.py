@@ -1,10 +1,12 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.bus import Bus
 from app.models.seat import Seat
+from app.models.trip_seat import TripSeat
+from app.models.booking_seat import BookingSeat
 
 
 class SeatRepository:
@@ -17,6 +19,28 @@ class SeatRepository:
         result = await self.db.execute(stmt)
 
         return result.scalar_one_or_none()
+
+    async def has_bookings_for_bus(self, bus_id: uuid.UUID) -> bool:
+        """
+        Bus ၏ Seat များနှင့် ဆက်စပ်နေသော Booking များ ရှိမရှိ စစ်ဆေးခြင်း။
+        BookingSeat → TripSeat → Seat → Bus ဆက်သွယ်မှု ရှိပါက True ပြန်ပေးမည်။
+        """
+        stmt = (
+            select(
+                exists()
+                .where(
+                    BookingSeat.trip_seat_id.in_(
+                        select(TripSeat.id).where(
+                            TripSeat.seat_id.in_(
+                                select(Seat.id).where(Seat.bus_id == bus_id)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        return bool(result.scalar())
 
     async def delete_seats_by_bus_id(self, bus_id: uuid.UUID) -> None:
         """Bus ID တွင် ရှိသော Seat ဟောင်းများကို ဖျက်ခြင်း"""
@@ -43,4 +67,3 @@ class SeatRepository:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
-

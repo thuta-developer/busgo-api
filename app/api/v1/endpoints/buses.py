@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -74,3 +74,18 @@ async def update_bus(
 async def delete_bus(bus_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     service = BusService(db)
     return await service.delete_bus(bus_id)
+
+
+@router.post(
+    "/{bus_id}/image",
+    response_model = BusResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(has_permission("bus:update"))],
+)
+async def upload_bus_image(
+    bus_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    service = BusService(db)
+    return await service.upload_bus_image(bus_id=bus_id, file=file)

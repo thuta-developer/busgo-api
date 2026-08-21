@@ -1,12 +1,17 @@
 import uuid
 import math
 from typing import Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.bus_repository import BusRepository
 from app.schemas.bus import BusCreate, BusUpdate, BusResponse
 from app.schemas.common import PaginatedResponse
+from app.services.upload_service import (
+    upload_to_cloudinary,
+    delete_from_cloudinary,
+    extract_public_id_from_url,
+)
 
 
 class BusService:
@@ -37,6 +42,29 @@ class BusService:
             total_pages=total_pages,
         )
 
+    async def upload_bus_image(
+        self, bus_id: uuid.UUID, file: UploadFile
+    ) -> BusResponse:
+        bus = await self.repo.get_by_id(bus_id)
+        if not bus:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bus not found",
+            )
+
+        if bus.bus_image_url:
+            old_public_id = extract_public_id_from_url(bus.bus_image_url)
+            if old_public_id:
+                await delete_from_cloudinary(old_public_id)
+
+        new_bus_image_url = await upload_to_cloudinary(
+            file=file,
+            folder="buses",
+        )
+        update_data = BusUpdate(bus_image_url=new_bus_image_url)
+        update_bus = await self.repo.update(bus, update_data)
+        return update_bus
+                
     async def get_bus_by_id(self, bus_id: uuid.UUID) -> BusResponse:
         """Bus ID ဖြင့် ရှာဖွေခြင်း (မရှိပါက 404 ပြမည်)"""
         bus = await self.repo.get_by_id(bus_id)

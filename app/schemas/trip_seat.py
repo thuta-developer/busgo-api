@@ -4,6 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 from decimal import Decimal
 from app.models.trip_seat import TripSeatStatus
+from app.schemas.bus import BusResponse
 
 
 class TripSeatBase(BaseModel):
@@ -32,12 +33,17 @@ class TripSeatResponse(TripSeatBase):
     booked_at: Optional[datetime] = None
     hold_expires_at: Optional[datetime] = None
 
+    
+
 
     # Optional nested data
     seat_number: Optional[str] = None
     row_number: Optional[int] = None
     column_number: Optional[int] = None
     position: Optional[str] = None
+
+    # Bus data
+    bus: Optional[BusResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
