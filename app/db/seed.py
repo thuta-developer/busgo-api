@@ -34,9 +34,23 @@ CRUD_RESOURCES = [
     "promotion",
 ]
 
+# Admin-scoped permissions (not part of standard CRUD but used by admin APIs)
+ADMIN_PERMISSIONS = [
+    {
+        "name": "booking:read_admin",
+        "description": "Can view all booking list and trip bookings (Admin)",
+        "module": "Booking",
+    },
+    {
+        "name": "booking:update_admin",
+        "description": "Can update booking status and cleanup expired bookings (Admin)",
+        "module": "Booking",
+    },
+]
+
 
 def build_permissions() -> List[Dict[str, str]]:
-    """Generate resource:action permission dicts dynamically."""
+    """Generate resource permission pairs dynamically."""
     perms = []
     for resource in CRUD_RESOURCES:
         for action in CRUD_ACTIONS:
@@ -45,6 +59,8 @@ def build_permissions() -> List[Dict[str, str]]:
                 "description": f"Can {action} {resource}",
                 "module": resource.capitalize(),
             })
+    # Append admin-scoped permissions
+    perms.extend(ADMIN_PERMISSIONS)
     return perms
 
 
@@ -57,23 +73,6 @@ DEFAULT_ROLES = {
     "Super Admin": {
         "description": "Full access to all modules and configurations",
         "permissions": "*",  # All permissions
-    },
-    "Manager": {
-        "description": "Manage buses, schedules, and operations",
-        "permissions": [
-            p["name"] for p in PERMISSIONS
-            if not p["name"].startswith(("role:", "permission:"))
-        ],
-    },
-    "Counter Staff": {
-        "description": "Handle ticket sales and bookings",
-        "permissions": [
-            "bus:read", "trip:read", "booking:create", "booking:read", "booking:delete"
-        ],
-    },
-    "Customer": {
-        "description": "Standard user",
-        "permissions": ["trip:read", "booking:create", "booking:read"],
     },
 }
 

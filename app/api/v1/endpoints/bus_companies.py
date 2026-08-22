@@ -70,9 +70,16 @@ async def update_company(
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(has_permission("bus_company:delete"))],
 )
-async def delete_company(company_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_company(company_id: uuid.UUID, hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)")  ,db: AsyncSession = Depends(get_db)):
     service = BusCompanyService(db)
-    return await service.delete_company(company_id)
+    if hard_delete:
+        await service.delete_company(company_id)
+    else:
+        await service.soft_delete_company(company_id)
+
+    return {
+        "message": f"Bus company {'hard ' if hard_delete else 'soft '}deleted successfully"
+    }
 
 
 

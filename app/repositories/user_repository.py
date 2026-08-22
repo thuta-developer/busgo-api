@@ -78,3 +78,11 @@ class UserRepository(BaseRepository[User]):
         users = result.scalars().all()
 
         return list(users), total
+
+    async def soft_delete(self, id: uuid.UUID) -> bool:
+        db_obj = await self.get_by_id(id)
+        if db_obj:
+            db_obj.is_active = False
+            await self.db.commit()
+            return True
+        return False

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,24 +49,94 @@ class BookingRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_all(
+        self,
+        search: Optional[str] = None,
+        status: Optional[BookingStatus] = None,
+        user_id: Optional[uuid.UUID] = None,
+        trip_id: Optional[uuid.UUID] = None,
+        travel_date: Optional[date] = None,
+        page: int = 1,
+        size: int = 20,
+    ) -> Tuple[List[Booking], int]:
+        """
+        Booking List ကို Search, Filter နှင့် Pagination ဖြင့် ရှာဖွေခြင်း (Admin)
+        """
+        query = select(Booking).options(
+            selectinload(Booking.booking_seats),
+            selectinload(Booking.trip),
+            selectinload(Booking.payments),
+        )
+
+        # Search by booking code, name, email, phone
+        if search:
+            search_filter = f"%{search}%"
+            query = query.where(
+                or_(
+                    Booking.booking_code.ilike(search_filter),
+                    Booking.name.ilike(search_filter),
+                    Booking.email.ilike(search_filter),
+                    Booking.phone.ilike(search_filter),
+                )
+            )
+
+        if user_id:
+            query = query.where(Booking.user_id == user_id)
+
+        if trip_id:
+            query = query.where(Booking.trip_id == trip_id)
+
+        if travel_date:
+            query = query.where(Booking.travel_date == travel_date)
+
+        if status:
+            query = query.where(Booking.status == status)
+
+        # Count total
+        count_query = select(func.count()).select_from(query.subquery())
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar_one()
+
+        # Pagination
+        query = (
+            query.order_by(desc(Booking.created_at))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all()), total
+
     async def get_by_user_id(
         self,
         user_id: uuid.UUID,
         status: Optional[BookingStatus] = None,
+        search: Optional[str] = None,
         page: int = 1,
         size: int = 20,
     ) -> Tuple[List[Booking], int]:
         """User ID ဖြင့် Booking စာရင်းရှာဖွေခြင်း (Paginated)"""
         query = select(Booking).where(Booking.user_id == user_id)
-        
+
+        # Search: booking code, name, email, phone
+        if search:
+            search_filter = f"%{search}%"
+            query = query.where(
+                or_(
+                    Booking.booking_code.ilike(search_filter),
+                    Booking.name.ilike(search_filter),
+                    Booking.email.ilike(search_filter),
+                    Booking.phone.ilike(search_filter),
+                )
+            )
+
         if status:
             query = query.where(Booking.status == status)
-        
+
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
-        
+
         # Get items with relationships
         query = (
             query
@@ -91,14 +161,14 @@ class BookingRepository:
     ) -> Tuple[List[Booking], int]:
         """Trip ID ဖြင့် Booking စာရင်းရှာဖွေခြင်း"""
         query = select(Booking).where(Booking.trip_id == trip_id)
-        
+
         if status:
             query = query.where(Booking.status == status)
-        
+
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
-        
+
         query = (
             query
             .options(
@@ -143,6 +213,14 @@ class BookingRepository:
         await self.db.commit()
         return True
 
+    async def soft_booking_delete(self, booking_id: uuid.UUID) -> bool:
+        booking = await self.get_by_id(booking_id)
+        if not booking:
+            return False
+        booking.is_active = False
+        await self.db.commit()
+        return True
+
     async def get_expired_bookings(self) -> List[Booking]:
         """သက်တမ်းကုန်သွားသော PENDING Bookings များကို ရှာဖွေခြင်း"""
         now = datetime.now()
@@ -158,6 +236,3 @@ class BookingRepository:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
-
-
-    

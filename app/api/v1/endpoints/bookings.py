@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,6 +72,9 @@ async def create_booking_with_payment(
     dependencies=[Depends(has_permission("booking:read"))],
 )
 async def get_my_bookings(
+    search: Optional[str] = Query(
+        None, description="Search by booking code, name, email, phone"
+    ),
     status: Optional[BookingStatus] = Query(None, description="Filter by status"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -83,7 +87,40 @@ async def get_my_bookings(
     service = BookingService(db)
     return await service.get_user_bookings(
         user_id=current_user.id,
+        search=search,
         status=status,
+        page=page,
+        size=size,
+    )
+
+
+@router.get(
+    "/",
+    response_model=PaginatedResponse[BookingResponse],
+    dependencies=[Depends(has_permission("booking:read_admin"))],
+)
+async def list_bookings(
+    search: Optional[str] = Query(
+        None, description="Search by booking code, name, email, phone"
+    ),
+    status: Optional[BookingStatus] = Query(None, description="Filter by status"),
+    user_id: Optional[uuid.UUID] = Query(None, description="Filter by user ID"),
+    trip_id: Optional[uuid.UUID] = Query(None, description="Filter by trip ID"),
+    travel_date: Optional[date] = Query(None, description="Filter by travel date"),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Booking List ကို Search, Filter နှင့် Pagination ဖြင့် ပြန်ပေးခြင်း (Admin Only)
+    """
+    service = BookingService(db)
+    return await service.list_bookings(
+        search=search,
+        status=status,
+        user_id=user_id,
+        trip_id=trip_id,
+        travel_date=travel_date,
         page=page,
         size=size,
     )
@@ -210,4 +247,30 @@ async def cleanup_expired_bookings(
     return {
         "message": f"Cleaned up {count} expired bookings",
         "count": count,
+    }
+
+
+@router.delete(
+    "{booking_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(has_permission("booking:delete"))],
+)
+async def delete_booking(
+    booking_id: uuid.UUID,
+    hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Booking ကို ဖျက်ခြင်း (သို့မဟုတ် Soft Delete)
+    """
+    service = BookingService(db)
+    if hard_delete:
+        await service.delete(booking_id)
+    else:
+        await service.soft_booking_delete(booking_id)
+
+    return {
+        "message": f"Booking {'hard ' if hard_delete else 'soft '}deleted successfully"
     }

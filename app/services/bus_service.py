@@ -139,4 +139,13 @@ class BusService:
                 detail="Bus not found",
             )
         await self.repo.delete(bus)
-        return {"message": "Bus deleted successfully"}
+        # return {"message": "Bus deleted successfully"}
+
+    async def soft_delete_bus(self, bus_id: uuid.UUID):
+        bus = await self.repo.get_by_id(bus_id)
+        if not bus:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bus not found",
+            )
+        await self.repo.soft_delete(bus_id)

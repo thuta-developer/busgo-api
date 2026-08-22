@@ -112,4 +112,17 @@ class RouteService:
                 detail="Route not found",
             )
         await self.repo.delete(route)
-        return {"message": "Route deleted successfully"}
+        # return {"message": "Route deleted successfully"}
+
+    async def soft_route_delete(self, route_id: uuid.UUID) -> dict:
+        route = await self.repo.get_by_id(route_id)
+        if not route:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Route not found",
+            )
+        await self.repo.soft_route_delete(route)
+        # return {"message": "Route deleted successfully"}
+
+
+        

@@ -71,9 +71,16 @@ async def update_bus(
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(has_permission("bus:delete"))],
 )
-async def delete_bus(bus_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_bus(bus_id: uuid.UUID, hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)"), db: AsyncSession = Depends(get_db)):
     service = BusService(db)
-    return await service.delete_bus(bus_id)
+    if hard_delete:
+        await service.delete_bus(bus_id)
+    else:
+        await service.soft_delete_bus(bus_id)
+
+    return {
+        "message": f"Bus {'hard ' if hard_delete else 'soft '}deleted successfully"
+    }
 
 
 @router.post(

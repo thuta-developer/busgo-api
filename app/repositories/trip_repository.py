@@ -173,4 +173,6 @@ class TripRepository:
         await self.db.commit()
 
 
-        
+    async def soft_delete(self, trip: Trip) -> None:
+        trip.is_active = False
+        await self.db.commit()

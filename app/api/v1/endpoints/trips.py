@@ -94,6 +94,14 @@ async def update_trip(
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(has_permission("trip:delete"))],
 )
-async def delete_trip(trip_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_trip(trip_id: uuid.UUID, hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)") ,db: AsyncSession = Depends(get_db)):
     service = TripService(db)
-    return await service.delete_trip(trip_id)
+    if hard_delete:
+        await service.delete_trip(trip_id)
+    else:
+        await service.soft_trip_delete(trip_id)
+
+    return {
+        "message": f"Trip {'hard ' if hard_delete else 'soft '}deleted successfully"
+    }
+    

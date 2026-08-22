@@ -4,12 +4,14 @@ from sqlalchemy import Boolean, String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
-from app.models.rbac import Role
 from app.models.associations import user_roles
 if TYPE_CHECKING:
     from app.models.trip_seat import TripSeat
     from app.models.booking import Booking
     from app.models.promotion_usage import PromotionUsage
+
+    
+from app.models.rbac import Role
 
 
 class User(BaseModel):

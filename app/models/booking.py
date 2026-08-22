@@ -14,6 +14,8 @@ from sqlalchemy import (
     Index,
     Integer,
     Date,
+    Boolean,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -125,6 +127,10 @@ class Booking(BaseModel):
         DateTime(timezone=True), nullable=False
     )  # ငွေပေးချေရန် သတ်မှတ်ရက် (ဥပမာ - ၁၅ မိနစ်)
 
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    
     # ===== Relationships =====
     user: Mapped["User"] = relationship("User", back_populates="bookings")
     trip: Mapped["Trip"] = relationship("Trip", back_populates="bookings")

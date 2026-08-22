@@ -3,11 +3,13 @@ import uuid
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from typing import List
-
-from app.models.bus import Bus
+from typing import List, TYPE_CHECKING
 from app.models.base import BaseModel
-from app.models.trip_seat import TripSeat
+
+
+if TYPE_CHECKING:
+    from app.models.bus import Bus
+    from app.models.trip_seat import TripSeat
 
 class BusType(str, enum.Enum):
     VIP_2_1 = "2:1"  # VIP 3 Columns (2 + 1)

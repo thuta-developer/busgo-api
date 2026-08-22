@@ -263,6 +263,7 @@ class BookingService:
                 booking_date=datetime.now(timezone.utc),
                 expiry_date=self._calculate_expiry(),
                 travel_date=travel_date,
+                is_active=True,
                 booking_seats=booking_seats_list,
             )
             booking = await self.repo.create(booking)
@@ -448,11 +449,16 @@ class BookingService:
         self,
         user_id: uuid.UUID,
         status: Optional[BookingStatus] = None,
+        search: Optional[str] = None,
         page: int = 1,
         size: int = 20,
     ) -> PaginatedResponse[BookingResponse]:
         bookings, total = await self.repo.get_by_user_id(
-            user_id=user_id, status=status, page=page, size=size
+            user_id=user_id,
+            status=status,
+            search=search,
+            page=page,
+            size=size,
         )
         items = [await self._to_response(b) for b in bookings]
         return PaginatedResponse(
@@ -461,6 +467,39 @@ class BookingService:
             page=page,
             size=size,
             total_pages=(total + size - 1) // size if total else 0,
+        )
+
+    async def list_bookings(
+        self,
+        search: Optional[str] = None,
+        status: Optional[BookingStatus] = None,
+        user_id: Optional[uuid.UUID] = None,
+        trip_id: Optional[uuid.UUID] = None,
+        travel_date: Optional[date] = None,
+        page: int = 1,
+        size: int = 20,
+    ) -> PaginatedResponse[BookingResponse]:
+        """
+        Booking List ကို Search, Filter နှင့် Pagination ဖြင့် ပြန်ပေးခြင်း (Admin)
+        """
+        bookings, total = await self.repo.get_all(
+            search=search,
+            status=status,
+            user_id=user_id,
+            trip_id=trip_id,
+            travel_date=travel_date,
+            page=page,
+            size=size,
+        )
+        items = [await self._to_response(b) for b in bookings]
+        total_pages = (total + size - 1) // size if total > 0 else 0
+
+        return PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            size=size,
+            total_pages=total_pages,
         )
 
     async def get_trip_bookings(
@@ -621,3 +660,22 @@ class BookingService:
             expired_count += 1
         await self.db.commit()
         return expired_count
+
+
+    async def delete(self, booking_id: uuid.UUID) -> None:
+        booking = await self.repo.get_by_id(booking_id)
+        if not booking:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found"
+            )
+
+        await self.repo.delete(booking_id)
+
+    async def soft_booking_delete(self, booking_id: uuid.UUID) -> None:
+        booking = await self.repo.get_by_id(booking_id)
+        if not booking:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found"
+            )
+
+        await self.repo.soft_booking_delete(booking_id)

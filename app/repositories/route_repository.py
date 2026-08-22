@@ -90,3 +90,7 @@ class RouteRepository:
     async def delete(self, route: Route) -> None:
         await self.db.delete(route)
         await self.db.commit()
+
+    async def soft_route_delete(self, route: Route) -> None:
+        route.is_active = False
+        await self.db.commit()

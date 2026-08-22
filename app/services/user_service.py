@@ -209,4 +209,12 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
-        return {"message": "User deleted successfully"}
+        # return {"message": "User deleted successfully"}
+
+    async def soft_delete_user(self, user_id: uuid.UUID) -> dict:
+        success = await self.user_repo.soft_delete(user_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+        # return {"message": "User Soft deleted successfully"}

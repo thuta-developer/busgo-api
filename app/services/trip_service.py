@@ -13,13 +13,13 @@ from app.schemas.trip import TripCreate, TripUpdate, TripResponse, TripPriceResp
 from app.schemas.common import PaginatedResponse
 from app.services.trip_seat_service import TripSeatService
 
+
 class TripService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = TripRepository(db)
         self.route_repository = RouteRepository(db)
         self.bus_repository = BusRepository(db)
-        
 
     # ========================================
     # Helper
@@ -238,8 +238,13 @@ class TripService:
                 detail="Trip not found",
             )
         await self.repo.delete(trip)
-        return {"message": "Trip deleted successfully"}
+        # return {"message": "Trip deleted successfully"}
 
-
-
-    
+    async def soft_trip_delete(self, trip_id: uuid.UUID) -> dict:
+        trip = await self.repo.get_by_id(trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="trip not found",
+            )
+        await self.repo.soft_delete(trip)

@@ -10,19 +10,20 @@ class BusCompanyRepository:
         self.db = db
 
     async def get_all(
-        self,
-        search: Optional[str] = None,
-        is_active: Optional[bool] = None,
-        page: int = 1,
-        size: int = 20,
+    self,
+    search: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    page: int = 1,
+    size: int = 20,
     ) -> Tuple[List[BusCompany], int]:
         """Search + Filter + Pagination ဖြင့် Company များကို ရယူသည်။"""
-        query = select(BusCompany)
+        
+        # 1. Filter conditions များကို စုစည်းခြင်း
+        filters = []
 
-        # Search: name / email / contact_phone / address တွင် ရှာဖွေခြင်း
         if search:
             search_filter = f"%{search}%"
-            query = query.where(
+            filters.append(
                 or_(
                     BusCompany.name.ilike(search_filter),
                     BusCompany.email.ilike(search_filter),
@@ -31,20 +32,28 @@ class BusCompanyRepository:
                 )
             )
 
-        # Filter: active company များသာ ရှာဖွေခြင်း
         if is_active is not None:
-            query = query.where(BusCompany.is_active == is_active)
+            filters.append(BusCompany.is_active == is_active)
 
-        # Total ရေတွက်ခြင်း
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar_one()
+        # 2. Total Count ရေတွက်ခြင်း (BusCompany.id ကို တိုက်ရိုက် count လုပ်သည်)
+        count_stmt = select(func.count(BusCompany.id))
+        if filters:
+            count_stmt = count_stmt.where(*filters)
+            
+        total_result = await self.db.execute(count_stmt)
+        total = total_result.scalar_one() or 0
 
-        # Pagination: offset = (page - 1) * size
+        # 3. Main Data Query ထုတ်ယူခြင်း
+        stmt = select(BusCompany)
+        if filters:
+            stmt = stmt.where(*filters)
+
+        # 4. Pagination နှင့် Sorting ထည့်သွင်းခြင်း
         offset = (page - 1) * size
-        query = query.order_by(BusCompany.created_at.desc()).offset(offset).limit(size)
+        stmt = stmt.order_by(BusCompany.created_at.desc()).offset(offset).limit(size)
 
-        result = await self.db.execute(query)
+        # 5. Result ရယူပြီး Return ပြန်ခြင်း
+        result = await self.db.execute(stmt)
         companies = list(result.scalars().all())
 
         return companies, total
@@ -77,3 +86,12 @@ class BusCompanyRepository:
     async def delete(self, company: BusCompany) -> None:
         await self.db.delete(company)
         await self.db.commit()
+
+    async def soft_delete(self, id: uuid.UUID) -> bool:
+        company = await self.get_by_id(id)
+        if not company:
+            return False
+        
+        company.is_active = False
+        await self.db.commit()
+        return True

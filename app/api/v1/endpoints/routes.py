@@ -72,9 +72,16 @@ async def update_route(
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(has_permission("route:delete"))],
 )
-async def delete_route(route_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_route(route_id: uuid.UUID, hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)") ,db: AsyncSession = Depends(get_db)):
     service = RouteService(db)
-    return await service.delete_route(route_id)
+    if hard_delete:
+        await service.delete_route(route_id)
+    else:
+        await service.soft_route_delete(route_id)
+
+    return {
+        "message": f"Route {'hard ' if hard_delete else 'soft '}deleted successfully"
+    }
 
 
 

@@ -2,10 +2,12 @@ import uuid
 from sqlalchemy import Column, String, Float, ForeignKey, Enum as SQLEnum, Boolean, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from app.models.base import BaseModel
-from app.models.trip import Trip
+
+if TYPE_CHECKING:
+    from app.models.trip import Trip
 
 
 class Route(BaseModel):

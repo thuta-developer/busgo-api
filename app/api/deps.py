@@ -85,7 +85,11 @@ def has_permission(required_permission: str) -> Callable:
     async def permission_checker(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
-        # User ထံတွင် ရရှိထားသော Permissions များကို စုစည်းမည်
+        # Super Admin (is_superuser) သည် Permission အားလုံးကို အမြဲတမ်း ရရှိသည်
+        if getattr(current_user, "is_superuser", False):
+            return current_user
+
+        # User ထံတွင် ရရှိသော permissions များကို စုစည်းမည်
         user_permissions = set()
         for role in current_user.roles:
             for perm in role.permissions:

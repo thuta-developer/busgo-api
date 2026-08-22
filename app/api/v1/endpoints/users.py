@@ -69,10 +69,20 @@ async def update_user(
     "/{user_id}",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(has_permission("user:delete"))],
+    
 )
-async def delete_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_user(user_id: uuid.UUID, hard_delete: bool = Query(False, description="Permanently delete (default: soft delete)"), db: AsyncSession = Depends(get_db)):
     """
     Delete User by ID
     """
     service = UserService(db)
-    return await service.delete_user(user_id)
+    if hard_delete:
+        await service.delete_user(user_id)
+    else:
+        await service.soft_delete_user(user_id)
+
+    return {
+        "message": f"User {'hard ' if hard_delete else 'soft '}deleted successfully"
+    }
+
+    

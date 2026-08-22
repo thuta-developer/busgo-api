@@ -45,11 +45,7 @@ class BusRepository:
         return list(result.scalars().all()), total
 
     async def get_by_id(self, id: uuid.UUID) -> Optional[Bus]:
-        stmt = (
-            select(Bus)
-            .options(selectinload(Bus.company))
-            .where(Bus.id == id)
-        )
+        stmt = select(Bus).options(selectinload(Bus.company)).where(Bus.id == id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -71,11 +67,7 @@ class BusRepository:
         await self.db.commit()
 
         # Company relationship ကို Eager Load လုပ်ပြီး ပြန်ယူသည်
-        stmt = (
-            select(Bus)
-            .options(selectinload(Bus.company))
-            .where(Bus.id == bus.id)
-        )
+        stmt = select(Bus).options(selectinload(Bus.company)).where(Bus.id == bus.id)
         result = await self.db.execute(stmt)
         return result.scalar_one()
 
@@ -85,14 +77,20 @@ class BusRepository:
         await self.db.commit()
 
         # Company relationship ကို Eager Load လုပ်ပြီး ပြန်ယူသည်
-        stmt = (
-            select(Bus)
-            .options(selectinload(Bus.company))
-            .where(Bus.id == bus.id)
-        )
+        stmt = select(Bus).options(selectinload(Bus.company)).where(Bus.id == bus.id)
         result = await self.db.execute(stmt)
         return result.scalar_one()
 
     async def delete(self, bus: Bus) -> None:
         await self.db.delete(bus)
         await self.db.commit()
+
+    async def soft_delete(self, id: uuid.UUID) -> bool:
+        bus = await self.get_by_id(id)
+        if not bus:
+            return False
+        if bus:
+            bus.is_active = False
+            await self.db.commit()
+            return True
+        return False
