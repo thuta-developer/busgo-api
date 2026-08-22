@@ -43,13 +43,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
         return response
 
+# 1. Custom Security Headers
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# 2. Trusted Host
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
+
+# 3. GZip Compression
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# 4. Rate Limiter
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
 )
+
+# 5. CORS Middleware ကို အောက်ဆုံးသို့ ရွှေ့ပါ (Request တက်လာလျှင် ဒါက အရင်ဆုံး အလုပ်လုပ်မည်)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -57,7 +66,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.include_router(v1_router)
 
